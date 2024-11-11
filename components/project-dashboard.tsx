@@ -5,9 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TeamSchedule } from "@/components/team-schedule";
 import { ProjectTasks } from "@/components/project-tasks";
 import { ScheduleOptimizer } from "@/components/schedule-optimizer";
+import { createServerClient } from '@/utils/supabaseclient';
 
-export function ProjectDashboard() {
+export async function ProjectDashboard() {
   const [activeTab, setActiveTab] = useState("team");
+  const supabase = await createServerClient();
 
   return (
     <div className="space-y-8">

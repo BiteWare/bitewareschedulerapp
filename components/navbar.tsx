@@ -9,7 +9,7 @@ export function Navbar() {
       <div className="container flex h-16 items-center px-4">
         <div className="flex items-center space-x-2">
           <CalendarDays className="h-6 w-6" />
-          <span className="text-lg font-semibold">Project Scheduler</span>
+          <span className="text-lg font-semibold">BiteSync</span>
         </div>
         
         <div className="flex flex-1 items-center justify-end space-x-4">

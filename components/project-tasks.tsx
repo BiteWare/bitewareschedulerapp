@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlusCircle, Clock } from "lucide-react";
+import { useSupabase } from '@/components/supabase-provider';
 
 export function ProjectTasks() {
   const [tasks, setTasks] = useState([]);
+  const { supabase } = useSupabase();
 
   return (
     <div className="space-y-6">
