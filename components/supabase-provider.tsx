@@ -1,48 +1,53 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { createClient } from '@/utils/supabaseclient'
-import type { SupabaseClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types/supabase'
+import { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
+import { supabase } from '@/utils/supabaseclient'
 
-type SupabaseContext = {
-  supabase: SupabaseClient<Database>
+interface SupabaseContextType {
+  user: User | null
+  session: Session | null
+  isLoading: boolean
+  supabase: typeof supabase
 }
 
-const Context = createContext<SupabaseContext | undefined>(undefined)
+export const SupabaseContext = createContext<SupabaseContextType>({
+  user: null,
+  session: null,
+  isLoading: true,
+  supabase: supabase
+})
 
-export default function SupabaseProvider({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const [supabase] = useState(() => createClient())
+export default function SupabaseProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session?.access_token !== undefined) {
-          // Handle auth state changes here if needed
-        }
+      (event: AuthChangeEvent, session: Session | null) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setIsLoading(false)
       }
     )
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase])
+  }, [])
 
   return (
-    <Context.Provider value={{ supabase }}>
+    <SupabaseContext.Provider value={{ user, session, isLoading, supabase }}>
       {children}
-    </Context.Provider>
+    </SupabaseContext.Provider>
   )
 }
 
 export const useSupabase = () => {
-  const context = useContext(Context)
+  const context = useContext(SupabaseContext)
   if (context === undefined) {
-    throw new Error('useSupabase must be used inside SupabaseProvider')
+    throw new Error('useSupabase must be used within a SupabaseProvider')
   }
   return context
 } 

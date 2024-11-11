@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-screen`}>
         <SupabaseProvider>
           <ThemeProvider
             attribute="class"
@@ -30,7 +30,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <main className="relative flex min-h-screen flex-col">
+              {children}
+            </main>
             <Toaster />
           </ThemeProvider>
         </SupabaseProvider>

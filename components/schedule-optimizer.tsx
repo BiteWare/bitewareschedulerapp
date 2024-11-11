@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Wand2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
-export function ScheduleOptimizer() {
+// Schedule optimization component
+export default function ScheduleOptimizer() {
   const { toast } = useToast();
   const [isOptimizing, setIsOptimizing] = useState(false);
 

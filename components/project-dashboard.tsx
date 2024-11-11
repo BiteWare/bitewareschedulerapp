@@ -1,44 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TeamSchedule } from "@/components/team-schedule";
-import { ProjectTasks } from "@/components/project-tasks";
-import { ScheduleOptimizer } from "@/components/schedule-optimizer";
-import { createServerClient } from '@/utils/supabaseclient';
+import { useSupabase } from '@/components/supabase-provider'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import ProjectTasks from './project-tasks'
 
-export async function ProjectDashboard() {
-  const [activeTab, setActiveTab] = useState("team");
-  const supabase = await createServerClient();
+const ProjectDashboard: React.FC = () => {
+  const { user, isLoading } = useSupabase()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/auth')
+    }
+  }, [user, isLoading, router])
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (!user) {
+    return null
+  }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col space-y-4">
-        <h1 className="text-3xl font-bold tracking-tight">Project Scheduling</h1>
-        <p className="text-muted-foreground">
-          Coordinate your team's schedule and optimize project timelines with AI assistance.
-        </p>
-      </div>
-
-      <Tabs defaultValue="team" className="space-y-6" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="team">Team Schedule</TabsTrigger>
-          <TabsTrigger value="tasks">Project Tasks</TabsTrigger>
-          <TabsTrigger value="optimize">Optimize Schedule</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="team" className="space-y-4">
-          <TeamSchedule />
-        </TabsContent>
-
-        <TabsContent value="tasks" className="space-y-4">
-          <ProjectTasks />
-        </TabsContent>
-
-        <TabsContent value="optimize" className="space-y-4">
-          <ScheduleOptimizer />
-        </TabsContent>
-      </Tabs>
+    <div className="container mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Project Dashboard</h1>
+      <ProjectTasks />
     </div>
-  );
+  )
 }
+
+export default ProjectDashboard

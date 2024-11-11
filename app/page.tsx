@@ -1,5 +1,5 @@
 import { Navbar } from '@/components/navbar';
-import { ProjectDashboard } from '@/components/project-dashboard';
+import ProjectDashboard from '@/components/project-dashboard';
 
 export default function Home() {
   return (

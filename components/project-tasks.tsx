@@ -10,9 +10,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PlusCircle, Clock } from "lucide-react";
 import { useSupabase } from '@/components/supabase-provider';
 
-export function ProjectTasks() {
-  const [tasks, setTasks] = useState([]);
+interface Task {
+  id: string;
+  name: string;
+  description: string;
+  assignee: string;
+  estimated_time: number;
+  priority: string;
+}
+
+// Project tasks management component
+export default function ProjectTasks() {
+  const [tasks, setTasks] = useState<Task[]>([]);
   const { supabase } = useSupabase();
+
+  const addTask = async (task: Omit<Task, 'id'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([task])
+        .select()
+
+      if (error) throw error
+      if (data) {
+        setTasks([...tasks, data[0]])
+      }
+    } catch (error) {
+      console.error('Error adding task:', error)
+    }
+  }
 
   return (
     <div className="space-y-6">
