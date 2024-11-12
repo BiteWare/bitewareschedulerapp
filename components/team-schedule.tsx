@@ -16,8 +16,9 @@ export function TeamSchedule() {
   const [date, setDate] = useState<Date>();
 
   return (
-    <div className="space-y-6">
-      <Card className="p-6">
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Team Schedule</h2>
+      <Card className="p-4">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Add Team Member</h3>
@@ -100,12 +101,12 @@ export function TeamSchedule() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-4">
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Team Schedule Overview</h3>
           <div className="rounded-lg border">
             {teamMembers.length === 0 ? (
-              <div className="flex h-[200px] items-center justify-center text-muted-foreground">
+              <div className="flex h-[150px] items-center justify-center text-muted-foreground">
                 No team members added yet
               </div>
             ) : (

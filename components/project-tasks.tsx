@@ -41,8 +41,9 @@ export default function ProjectTasks() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="p-6">
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Project Tasks</h2>
+      <Card className="p-4">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Add Project Task</h3>
@@ -109,12 +110,12 @@ export default function ProjectTasks() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-4">
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Project Tasks Overview</h3>
           <div className="rounded-lg border">
             {tasks.length === 0 ? (
-              <div className="flex h-[200px] items-center justify-center text-muted-foreground">
+              <div className="flex h-[150px] items-center justify-center text-muted-foreground">
                 No tasks added yet
               </div>
             ) : (
