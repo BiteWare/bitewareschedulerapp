@@ -1,15 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/utils"
 import { useRouter } from 'next/navigation'
 import { toast } from "sonner"
-import { AuthError } from '@supabase/supabase-js'
-import { User } from '@supabase/supabase-js'
 import { supabase } from "@/utils/supabaseclient"
 
 export default function AuthPage() {
@@ -19,30 +16,18 @@ export default function AuthPage() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
-
   const router = useRouter()
 
-  const logLoginAttempt = async (user: User) => {
-    try {
-      const loginData = {
-        user_id: user.id,
-        login_ip: window.location.hostname,
-        device_info: navigator.userAgent,
-        success: true
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/')
       }
-
-      const { error } = await supabase
-        .from('user_logins')
-        .insert([loginData])
-
-      if (error) {
-        console.error('Error logging login attempt:', error)
-      }
-    } catch (error) {
-      console.error('Error logging login attempt:', error)
-      // Don't throw the error - we don't want to interrupt the login flow
     }
-  }
+    
+    checkSession()
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,23 +35,11 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
-
         if (error) throw error
-        
-        // Log the successful login attempt
-        if (data?.user) {
-          try {
-            await logLoginAttempt(data.user)
-          } catch (logError) {
-            console.error('Error logging login:', logError)
-          }
-        }
-
-        router.refresh()
         router.push('/')
       } else {
         const { error } = await supabase.auth.signUp({
@@ -82,13 +55,7 @@ export default function AuthPage() {
         toast.success('Check your email to confirm your account!')
       }
     } catch (error) {
-      if (error instanceof AuthError) {
-        toast.error(error.message)
-      } else if (error instanceof Error) {
-        toast.error(error.message)
-      } else {
-        toast.error('An unexpected error occurred')
-      }
+      toast.error(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
