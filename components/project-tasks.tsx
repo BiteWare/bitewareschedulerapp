@@ -1,129 +1,86 @@
 "use client";
 
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle, Clock } from "lucide-react";
-import { useSupabase } from '@/components/supabase-provider';
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
-interface Task {
-  id: string;
-  name: string;
-  description: string;
-  assignee: string;
-  estimated_time: number;
-  priority: string;
-}
-
-// Project tasks management component
 export default function ProjectTasks() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const { supabase } = useSupabase();
-
-  const addTask = async (task: Omit<Task, 'id'>) => {
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert([task])
-        .select()
-
-      if (error) throw error
-      if (data) {
-        setTasks([...tasks, data[0]])
-      }
-    } catch (error) {
-      console.error('Error adding task:', error)
-    }
-  }
-
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Project Tasks</h2>
-      <Card className="p-4">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Add Project Task</h3>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Task
-            </Button>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Project Tasks</CardTitle>
+            <CardDescription>High-level task breakdown and scheduling</CardDescription>
           </div>
+          <Button size="sm" className="ml-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Task
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {/* Task List */}
+          <div className="grid gap-4">
+            {/* Example Task Group */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Planning Phase</CardTitle>
+                  <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Current Phase</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Individual Task */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium">Requirements Gathering</h4>
+                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">4-6 hours</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-sm">Required Participants</Label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">Product Manager</span>
+                          <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">Tech Lead</span>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm">Dependencies</Label>
+                        <div className="text-sm text-gray-600">None</div>
+                      </div>
+                    </div>
+                  </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="task-name">Task Name</Label>
-              <Input id="task-name" placeholder="Enter task name" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="assignee">Assignee</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select team member" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Enter task description"
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="estimated-time">Estimated Time</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  id="estimated-time"
-                  type="number"
-                  placeholder="Enter hours"
-                  min="0"
-                />
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                  {/* Another Task */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium">Technical Design Review</h4>
+                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">2-3 hours</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-sm">Required Participants</Label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">Tech Lead</span>
+                          <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">Senior Developer</span>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm">Dependencies</Label>
+                        <div className="text-sm text-gray-600">Requirements Gathering</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </Card>
-
-      <Card className="p-4">
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Project Tasks Overview</h3>
-          <div className="rounded-lg border">
-            {tasks.length === 0 ? (
-              <div className="flex h-[150px] items-center justify-center text-muted-foreground">
-                No tasks added yet
-              </div>
-            ) : (
-              <div>{/* Tasks list will go here */}</div>
-            )}
-          </div>
-        </div>
-      </Card>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

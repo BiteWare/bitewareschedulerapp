@@ -11,10 +11,8 @@ import { supabase } from "@/utils/supabaseclient"
 
 export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -34,25 +32,20 @@ export default function AuthPage() {
     setLoading(true)
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (error) throw error
-        router.push('/')
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-            },
-          },
-        })
-        if (error) throw error
-        toast.success('Check your email to confirm your account!')
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+
+      if (data.session) {
+        toast.success('Successfully signed in!')
+        router.refresh() // Refresh the current page to update auth state
+        router.push('/') // Redirect to home page
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'An error occurred')
@@ -66,29 +59,13 @@ export default function AuthPage() {
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">
-            {isLogin ? "Welcome back" : "Create an account"}
+            Welcome back
           </h1>
           <p className="text-muted-foreground">
-            {isLogin
-              ? "Enter your credentials to access your account"
-              : "Fill in the information to get started"}
+            Enter your credentials to access your account
           </p>
         </div>
         <form className="space-y-6" onSubmit={handleSubmit}>
-          {!isLogin && (
-            <div className="space-y-2">
-              <Label htmlFor="name">
-                Full Name
-              </Label>
-              <Input
-                id="name"
-                placeholder="Enter your full name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required={!isLogin}
-              />
-            </div>
-          )}
           <div className="space-y-2">
             <Label htmlFor="email">
               Email
@@ -134,20 +111,9 @@ export default function AuthPage() {
             type="submit"
             disabled={loading}
           >
-            {loading ? "Loading..." : (isLogin ? "Sign In" : "Sign Up")}
+            {loading ? "Loading..." : "Sign In"}
           </Button>
         </form>
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-sm text-primary hover:underline"
-          >
-            {isLogin
-              ? "Don't have an account? Sign up"
-              : "Already have an account? Sign in"}
-          </button>
-        </div>
       </div>
     </div>
   )

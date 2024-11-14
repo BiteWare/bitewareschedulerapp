@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/navbar'
-import UserPrefs from '@/components/user-prefs'
+import MainDashboard from '@/components/main-dashboard'
 import { supabase } from '@/utils/supabaseclient'
 
 export default function Home() {
@@ -30,7 +30,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 py-8">
-        <UserPrefs />
+        <MainDashboard />
       </main>
     </div>
   )
