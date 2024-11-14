@@ -18,6 +18,23 @@ import {
 
 export function Navbar() {
   const router = useRouter();
+  const [userEmail, setUserEmail] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    // Get initial user
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserEmail(user?.email ?? null);
+    };
+    getUser();
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -49,6 +66,11 @@ export function Navbar() {
         </div>
         
         <div className="flex items-center space-x-4 pr-4">
+          {userEmail && (
+            <span className="text-sm text-muted-foreground">
+              {userEmail}
+            </span>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <User className="h-5 w-5 cursor-pointer" />

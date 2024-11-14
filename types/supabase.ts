@@ -28,21 +28,24 @@ export interface Database {
           id: string
           email: string
           password_hash: string
-          role_id: string
+          role: string
+          team: string
           created_at: string
         }
         Insert: {
           id?: string
           email: string
           password_hash: string
-          role_id: string
+          role: string
+          team: string
           created_at?: string
         }
         Update: {
           id?: string
           email?: string
           password_hash?: string
-          role_id?: string
+          role?: string
+          team?: string
           created_at?: string
         }
       }
@@ -82,7 +85,6 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          project_id: string
           start_time: string
           end_time: string
           recurring: boolean
@@ -91,7 +93,6 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          project_id: string
           start_time: string
           end_time: string
           recurring?: boolean
@@ -100,7 +101,6 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          project_id?: string
           start_time?: string
           end_time?: string
           recurring?: boolean
@@ -118,4 +118,21 @@ export interface Database {
       [_ in never]: never
     }
   }
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  role: string;
+  team: string;
+  created_at: string;
+}
+
+export interface UserSchedule {
+  id: string;
+  user_id: string;
+  start_time: string;
+  end_time: string;
+  recurring: boolean;
+  created_at: string;
 } 

@@ -7,8 +7,16 @@ import { Button } from "./ui/button";
 import ProjectTasks from "./project-tasks";
 import ScheduleOptimizer from "./schedule-optimizer";
 import { TeamSchedule } from "./team-schedule";
+import { UserProfile, UserSchedule } from '@/types/supabase'
 
-export default function MainDashboard() {
+interface MainDashboardProps {
+  userData: {
+    profile: UserProfile | null;
+    schedule: UserSchedule | null;
+  } | null;
+}
+
+export default function MainDashboard({ userData }: MainDashboardProps) {
   const [activeTab, setActiveTab] = useState<'users' | 'projects'>('users');
 
   return (

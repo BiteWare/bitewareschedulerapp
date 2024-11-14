@@ -1,29 +1,18 @@
--- Schema for Biteware Scheduler App
-
--- Roles table
-CREATE TABLE roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    role_name TEXT UNIQUE NOT NULL
-);
-
--- Populate Roles Table
-INSERT INTO roles (role_name) VALUES
-    ('admin'),
-    ('user');
-
--- Users table
+-- Step 1: Create Users Table
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    role_id UUID REFERENCES roles(id),
+    role TEXT NOT NULL,
+    team TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Projects table
+-- Step 2: Create Projects Table
+-- No association with schedules, only tied to users
 CREATE TABLE projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL, -- user_id is not a foreign key
     name TEXT NOT NULL,
     description TEXT,
     start_date DATE,
@@ -32,15 +21,13 @@ CREATE TABLE projects (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Schedules table
+-- Step 3: Create Schedules Table
+-- No association with projects, only tied to users
 CREATE TABLE schedules (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL, -- user_id is not a foreign key
     start_time TIMESTAMP,
     end_time TIMESTAMP,
     recurring BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
-
--- Add any additional tables and relationships here 

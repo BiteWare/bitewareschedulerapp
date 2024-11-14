@@ -14,12 +14,14 @@ import type { Database } from "@/types/supabase"
 
 interface UserDataState {
   email: string
-  role_id: string
+  name: string
+  role: string
+  team: string
   schedules: Database['public']['Tables']['schedules']['Row'][]
-  roles: {
-    id: string
-    role_name: string
-  }[] | null
+  workHoursStart: string
+  workHoursEnd: string
+  timezone: string
+  standingMeetings: string
 }
 
 export default function UserPrefs() {
@@ -27,9 +29,14 @@ export default function UserPrefs() {
   const [isLoading, setIsLoading] = useState(false)
   const [userData, setUserData] = useState<UserDataState>({
     email: '',
-    role_id: '',
+    name: '',
+    role: '',
+    team: '',
     schedules: [],
-    roles: null
+    workHoursStart: '09:00',
+    workHoursEnd: '17:00',
+    timezone: 'UTC',
+    standingMeetings: ''
   })
 
   useEffect(() => {
@@ -38,77 +45,156 @@ export default function UserPrefs() {
 
   const loadUserData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) {
+        console.error('Auth error:', authError)
+        throw authError
+      }
+      
+      if (!user) {
+        console.error('No user found')
+        return
+      }
 
+      // First verify the user exists in our users table
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select(`
-          email,
-          role_id,
-          roles (
-            id,
-            role_name
-          )
-        `)
+        .select('*')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
-      if (userError) throw userError
+      if (userError) {
+        console.error('User fetch error:', userError)
+        // If user doesn't exist in our users table, create them
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([
+            { 
+              id: user.id,
+              email: user.email,
+              role: 'user', // Default role
+              team: 'unassigned' // Default team
+            }
+          ])
+        
+        if (insertError) {
+          console.error('User insert error:', insertError)
+          throw insertError
+        }
+      }
 
+      // Now get the schedules
       const { data: schedules, error: schedulesError } = await supabase
         .from('schedules')
         .select('*')
         .eq('user_id', user.id)
 
-      if (schedulesError) throw schedulesError
-
-      const rolesArray = Array.isArray(userData.roles) ? userData.roles : [userData.roles].filter(Boolean)
+      if (schedulesError) {
+        console.error('Schedules fetch error:', schedulesError)
+        throw schedulesError
+      }
 
       setUserData({
-        email: userData.email,
-        role_id: userData.role_id,
-        roles: rolesArray,
-        schedules: schedules || []
+        email: user.email || '',
+        name: userData?.name || '',
+        role: userData?.role || 'user',
+        team: userData?.team || 'unassigned',
+        schedules: schedules || [],
+        workHoursStart: '09:00',
+        workHoursEnd: '17:00',
+        timezone: 'UTC',
+        standingMeetings: ''
       })
+
     } catch (error) {
-      console.error('Error loading user data:', error)
+      console.error('Detailed error:', error)
       toast({
         title: "Error",
-        description: "Failed to load user data",
+        description: "Could not load user data. Please try again.",
+        variant: "destructive"
       })
     }
   }
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>, message: string) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>, message: string): Promise<void> => {
     event.preventDefault()
     setIsLoading(true)
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No user found')
+      if (!user?.id) throw new Error('No user found')
 
-      // Update user data
-      const { error: updateError } = await supabase
+      // Log the current state for debugging
+      console.log('Updating user with data:', {
+        id: user.id,
+        name: userData.name,
+        role: userData.role,
+        team: userData.team
+      })
+
+      const { data, error: updateError } = await supabase
         .from('users')
         .update({
-          email: userData.email,
-          role_id: userData.role_id,
-          // Note: password_hash should be handled separately through auth functions
+          role: userData.role || 'user',
+          team: userData.team || 'unassigned'
         })
         .eq('id', user.id)
+        .select()
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('Update error:', updateError)
+        throw updateError
+      }
+
+      console.log('Update response:', data)
 
       toast({
-        title: "Success!",
+        title: "Success",
         description: message,
       })
+
     } catch (error) {
       console.error('Error updating user:', error)
       toast({
         title: "Error",
         description: "Failed to update user data",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleScheduleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault()
+    setIsLoading(true)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      // Insert new schedule - directly tied to user only
+      await supabase
+        .from('schedules')
+        .insert({
+          user_id: user?.id,
+          start_time: userData.workHoursStart,
+          end_time: userData.workHoursEnd,
+          recurring: true
+        })
+
+      toast({
+        title: "Success",
+        description: "Schedule updated successfully!",
+      })
+
+      await loadUserData()
+
+    } catch (error) {
+      console.error('Error saving schedule:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save schedule",
       })
     } finally {
       setIsLoading(false)
@@ -138,11 +224,24 @@ export default function UserPrefs() {
                   <div className="grid w-full items-center gap-4">
                     <div className="flex flex-col space-y-1.5">
                       <Label htmlFor="name">Full Name</Label>
-                      <Input id="name" />
+                      <Input 
+                        id="name"
+                        value={userData.name}
+                        onChange={(e) => setUserData(prev => ({
+                          ...prev,
+                          name: e.target.value
+                        }))}
+                      />
                     </div>
                     <div className="flex flex-col space-y-1.5">
                       <Label htmlFor="role">Primary Role</Label>
-                      <Select>
+                      <Select 
+                        value={userData.role}
+                        onValueChange={(value) => setUserData(prev => ({
+                          ...prev,
+                          role: value
+                        }))}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select your role" />
                         </SelectTrigger>
@@ -156,7 +255,13 @@ export default function UserPrefs() {
                     </div>
                     <div className="flex flex-col space-y-1.5">
                       <Label htmlFor="team">Team</Label>
-                      <Select>
+                      <Select
+                        value={userData.team}
+                        onValueChange={(value) => setUserData(prev => ({
+                          ...prev,
+                          team: value
+                        }))}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select your team" />
                         </SelectTrigger>
@@ -186,11 +291,17 @@ export default function UserPrefs() {
                 <CardDescription>Your working hours and commitments</CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={(e) => handleSubmit(e, "Schedule updated successfully!")}>
+                <form onSubmit={handleScheduleSubmit}>
                   <div className="grid w-full items-center gap-4">
                     <div className="flex flex-col space-y-1.5">
                       <Label>Timezone</Label>
-                      <Select defaultValue="UTC">
+                      <Select
+                        value={userData.timezone}
+                        onValueChange={(value) => setUserData(prev => ({
+                          ...prev,
+                          timezone: value
+                        }))}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select timezone" />
                         </SelectTrigger>
@@ -207,17 +318,36 @@ export default function UserPrefs() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex flex-col space-y-1.5">
                         <Label>Work Hours Start</Label>
-                        <Input type="time" defaultValue="09:00" />
+                        <Input 
+                          type="time" 
+                          value={userData.workHoursStart}
+                          onChange={(e) => setUserData(prev => ({
+                            ...prev,
+                            workHoursStart: e.target.value
+                          }))}
+                        />
                       </div>
                       <div className="flex flex-col space-y-1.5">
                         <Label>Work Hours End</Label>
-                        <Input type="time" defaultValue="17:00" />
+                        <Input 
+                          type="time" 
+                          value={userData.workHoursEnd}
+                          onChange={(e) => setUserData(prev => ({
+                            ...prev,
+                            workHoursEnd: e.target.value
+                          }))}
+                        />
                       </div>
                     </div>
 
                     <div className="flex flex-col space-y-1.5">
                       <Label>Standing Meetings</Label>
                       <Textarea 
+                        value={userData.standingMeetings}
+                        onChange={(e) => setUserData(prev => ({
+                          ...prev,
+                          standingMeetings: e.target.value
+                        }))}
                         className="min-h-[80px]"
                       />
                     </div>
