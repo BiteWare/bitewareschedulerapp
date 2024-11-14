@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,21 +9,110 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
+import { supabase } from "@/utils/supabaseclient"
+import type { Database } from "@/types/supabase"
+
+interface UserDataState {
+  email: string
+  role_id: string
+  schedules: Database['public']['Tables']['schedules']['Row'][]
+  roles: {
+    id: string
+    role_name: string
+  }[] | null
+}
 
 export default function UserPrefs() {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [userData, setUserData] = useState<UserDataState>({
+    email: '',
+    role_id: '',
+    schedules: [],
+    roles: null
+  })
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>, message: string) => {
+  useEffect(() => {
+    loadUserData()
+  }, [])
+
+  const loadUserData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select(`
+          email,
+          role_id,
+          roles (
+            id,
+            role_name
+          )
+        `)
+        .eq('id', user.id)
+        .single()
+
+      if (userError) throw userError
+
+      const { data: schedules, error: schedulesError } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('user_id', user.id)
+
+      if (schedulesError) throw schedulesError
+
+      const rolesArray = Array.isArray(userData.roles) ? userData.roles : [userData.roles].filter(Boolean)
+
+      setUserData({
+        email: userData.email,
+        role_id: userData.role_id,
+        roles: rolesArray,
+        schedules: schedules || []
+      })
+    } catch (error) {
+      console.error('Error loading user data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load user data",
+      })
+    }
+  }
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>, message: string) => {
     event.preventDefault()
     setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('No user found')
+
+      // Update user data
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          email: userData.email,
+          role_id: userData.role_id,
+          // Note: password_hash should be handled separately through auth functions
+        })
+        .eq('id', user.id)
+
+      if (updateError) throw updateError
+
       toast({
         title: "Success!",
         description: message,
       })
-    }, 1000)
+    } catch (error) {
+      console.error('Error updating user:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update user data",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

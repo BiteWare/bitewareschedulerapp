@@ -9,36 +9,104 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      tasks: {
+      roles: {
         Row: {
           id: string
-          created_at: string
-          title: string
-          description: string | null
-          assignee: string | null
-          estimated_time: number | null
-          priority: 'low' | 'medium' | 'high'
+          role_name: string
         }
         Insert: {
           id?: string
-          created_at?: string
-          title: string
-          description?: string | null
-          assignee?: string | null
-          estimated_time?: number | null
-          priority?: 'low' | 'medium' | 'high'
+          role_name: string
         }
         Update: {
           id?: string
-          created_at?: string
-          title?: string
-          description?: string | null
-          assignee?: string | null
-          estimated_time?: number | null
-          priority?: 'low' | 'medium' | 'high'
+          role_name?: string
         }
       }
-      // Add other tables as needed
+      users: {
+        Row: {
+          id: string
+          email: string
+          password_hash: string
+          role_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          password_hash: string
+          role_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          password_hash?: string
+          role_id?: string
+          created_at?: string
+        }
+      }
+      projects: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          start_date: string
+          end_date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          start_date: string
+          end_date: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string | null
+          start_date?: string
+          end_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      schedules: {
+        Row: {
+          id: string
+          user_id: string
+          project_id: string
+          start_time: string
+          end_time: string
+          recurring: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          project_id: string
+          start_time: string
+          end_time: string
+          recurring?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          project_id?: string
+          start_time?: string
+          end_time?: string
+          recurring?: boolean
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
