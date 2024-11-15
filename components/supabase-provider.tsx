@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase } from '@/utils/supabaseclient'
+import { Database } from '@/types/supabase'
 
 interface SupabaseContextType {
   user: User | null
@@ -24,6 +25,13 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Initialize session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      setIsLoading(false)
+    })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event: AuthChangeEvent, session: Session | null) => {
         setSession(session)

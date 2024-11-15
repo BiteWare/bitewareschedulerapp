@@ -7,87 +7,163 @@ import MainDashboard from '@/components/main-dashboard'
 import { supabase } from '@/utils/supabaseclient'
 import { toast } from "sonner"
 import { UserProfile, UserSchedule } from '@/types/supabase'
+import Lottie from "lottie-react"
+import loadingAnimation from "@/public/zyrisloader.json"
+import { useSupabase } from '@/components/supabase-provider'
+import { Button } from '@/components/ui/button'
+
+interface UserData {
+  profile: UserProfile | null;
+  schedule: UserSchedule | null;
+}
 
 export default function Home() {
   const router = useRouter()
+  const { session } = useSupabase()
   const [loading, setLoading] = useState(true)
-  const [userData, setUserData] = useState<{
-    profile: UserProfile | null;
-    schedule: UserSchedule | null;
-  } | null>(null)
+  const [userData, setUserData] = useState<UserData | null>(null)
+
+  const loadUserData = async (userId: string): Promise<UserData> => {
+    try {
+      // Get user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (profileError) throw profileError
+
+      // Get user schedule
+      const { data: schedule, error: scheduleError } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (scheduleError && scheduleError.code !== 'PGRST116') {
+        throw scheduleError
+      }
+
+      return {
+        profile,
+        schedule: schedule || null
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error)
+      throw error
+    }
+  }
 
   useEffect(() => {
-    const loadUserData = async (userId: string) => {
-      try {
-        console.log('Loading data for user:', userId);
-
-        const { data: user, error: userError } = await supabase
-          .from('users')
-          .select(`
-            id,
-            email,
-            role,
-            team,
-            created_at
-          `)
-          .eq('id', userId)
-          .single();
-
-        if (userError) {
-          console.error('User error:', userError);
-          throw userError;
-        }
-
-        console.log('Loaded user:', user);
-
-        const { data: schedule, error: scheduleError } = await supabase
-          .from('schedules')
-          .select(`
-            id,
-            user_id,
-            start_time,
-            end_time,
-            recurring,
-            created_at
-          `)
-          .eq('user_id', userId)
-          .single();
-
-        console.log('Schedule query result:', { schedule, error: scheduleError });
-
-        if (scheduleError && scheduleError.code !== 'PGRST116') {
-          console.error('Schedule error:', scheduleError);
-          throw scheduleError;
-        }
-
-        setUserData({
-          profile: user,
-          schedule: schedule || null
-        });
-      } catch (error) {
-        console.error('Detailed error in loadUserData:', error);
-        toast.error('Failed to load user data');
-      }
-    }
-
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      try {
+        if (!session) {
+          router.push('/auth')
+          return
+        }
+
+        const data = await loadUserData(session.user.id)
+        setUserData(data)
+      } catch (error) {
+        console.error('Error checking user session:', error)
+        toast.error('Failed to load user data')
         router.push('/auth')
-        return
+      } finally {
+        setLoading(false)
       }
-      
-      await loadUserData(session.user.id)
-      setLoading(false)
     }
 
     checkUser()
-  }, [router])
 
+    // Set up realtime subscriptions
+    const userChannel = supabase.channel('user-updates')
+
+    // Subscribe to user profile changes
+    const userSubscription = userChannel
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'users',
+          filter: `id=eq.${session?.user.id}`
+        }, 
+        async (payload) => {
+          if (payload.new) {
+            setUserData((current) => {
+              if (!current) return null;
+              return {
+                profile: payload.new as UserProfile,
+                schedule: current.schedule
+              }
+            })
+            toast.success('Profile updated')
+          }
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'schedules',
+          filter: `user_id=eq.${session?.user.id}`
+        },
+        async (payload) => {
+          if (payload.new) {
+            setUserData((current) => {
+              if (!current) return null;
+              return {
+                profile: current.profile,
+                schedule: payload.new as UserSchedule
+              }
+            })
+            toast.success('Schedule updated')
+          }
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscriptions
+    return () => {
+      userChannel.unsubscribe()
+    }
+  }, [router, session])
+
+  // Handle loading state
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin">Loading...</div>
-    </div>
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Lottie
+          animationData={loadingAnimation}
+          loop={true}
+          style={{ width: 50, height: 50 }}
+          className="transform rotate-0"
+          rendererSettings={{
+            preserveAspectRatio: 'xMidYMid slice'
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Handle no user data
+  if (!userData?.profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">No Profile Found</h2>
+          <p className="text-muted-foreground mb-4">
+            There was an error loading your profile.
+          </p>
+          <Button
+            onClick={() => router.push('/auth')}
+            variant="outline"
+          >
+            Return to Login
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (

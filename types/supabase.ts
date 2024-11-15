@@ -9,130 +9,60 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      roles: {
-        Row: {
-          id: string
-          role_name: string
-        }
-        Insert: {
-          id?: string
-          role_name: string
-        }
-        Update: {
-          id?: string
-          role_name?: string
-        }
-      }
       users: {
-        Row: {
-          id: string
-          email: string
-          password_hash: string
-          role: string
-          team: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          email: string
-          password_hash: string
-          role: string
-          team: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          email?: string
-          password_hash?: string
-          role?: string
-          team?: string
-          created_at?: string
-        }
-      }
+        Row: UserProfile;
+        Insert: Omit<UserProfile, 'id' | 'created_at'>;
+        Update: Partial<Omit<UserProfile, 'id' | 'created_at'>>;
+      };
       projects: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          description: string | null
-          start_date: string
-          end_date: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          description?: string | null
-          start_date: string
-          end_date: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          description?: string | null
-          start_date?: string
-          end_date?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
+        Row: Project;
+        Insert: Omit<Project, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Project, 'id' | 'created_at' | 'updated_at'>>;
+      };
       schedules: {
-        Row: {
-          id: string
-          user_id: string
-          start_time: string
-          end_time: string
-          recurring: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          start_time: string
-          end_time: string
-          recurring?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          start_time?: string
-          end_time?: string
-          recurring?: boolean
-          created_at?: string
-        }
-      }
-    }
+        Row: UserSchedule;
+        Insert: Omit<UserSchedule, 'id' | 'created_at'>;
+        Update: Partial<Omit<UserSchedule, 'id' | 'created_at'>>;
+      };
+    };
     Views: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Functions: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Enums: {
-      [_ in never]: never
-    }
-  }
+      [_ in never]: never;
+    };
+  };
 }
 
 export interface UserProfile {
   id: string;
   email: string;
+  name: string | null;
   role: string;
   team: string;
   created_at: string;
 }
 
+export interface Project {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UserSchedule {
   id: string;
   user_id: string;
-  start_time: string;
-  end_time: string;
-  recurring: boolean;
+  timezone: string;
+  work_hours_start: string | null;
+  work_hours_end: string | null;
+  standing_meetings: string | null;
   created_at: string;
 } 

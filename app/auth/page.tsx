@@ -9,6 +9,14 @@ import { useRouter } from 'next/navigation'
 import { toast } from "sonner"
 import { supabase } from "@/utils/supabaseclient"
 import Image from "next/image"
+import Lottie from "lottie-react"
+import loadingAnimation from "@/public/zyrisloader.json"
+import { UserProfile, UserSchedule } from "@/types/supabase"
+
+interface UserData {
+  profile: UserProfile;
+  schedule: UserSchedule | null;
+}
 
 export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -19,59 +27,74 @@ export default function AuthPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.push('/')
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
+        
+        if (session) {
+          const userData = await loadUserData(session.user.id)
+          if (userData) {
+            router.push('/')
+          }
+        }
+      } catch (error) {
+        console.error('Session check error:', error)
+        toast.error('Error verifying session')
       }
     }
     
     checkSession()
   }, [router])
 
-  const loadUserData = async (userId: string) => {
+  const loadUserData = async (userId: string): Promise<UserData | null> => {
     try {
-      const { data: user, error: userError } = await supabase
+      const { data: profile, error: userError } = await supabase
         .from('users')
-        .select(`
-          id,
-          email,
-          role,
-          team,
-          created_at
-        `)
+        .select('*')
         .eq('id', userId)
         .single()
 
       if (userError) {
+        if (userError.code === 'PGRST116') {
+          return null
+        }
         throw userError
       }
 
       const { data: schedule, error: scheduleError } = await supabase
         .from('schedules')
-        .select(`
-          id,
-          user_id,
-          start_time,
-          end_time,
-          recurring,
-          created_at
-        `)
+        .select('*')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (scheduleError && scheduleError.code !== 'PGRST116') {
         throw scheduleError
       }
 
-      return { 
-        profile: user,
+      return {
+        profile,
         schedule: schedule || null
       }
     } catch (error) {
-      console.error('Error loading user data:', error)
-      toast.error('Failed to load user data')
-      return null
+      console.error('Error in loadUserData:', error)
+      throw error
     }
+  }
+
+  const createUserProfile = async (userId: string, userEmail: string) => {
+    const { error: insertError } = await supabase
+      .from('users')
+      .insert([{
+        id: userId,
+        email: userEmail,
+        role: 'user',
+        team: 'unassigned',
+        name: null
+      }])
+      .select()
+      .single()
+
+    if (insertError) throw insertError
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,51 +107,27 @@ export default function AuthPage() {
         password,
       })
       
-      if (error) {
-        toast.error(error.message)
-        return
-      }
+      if (error) throw error
+      if (!data.session) throw new Error('No session data received')
 
-      if (data.session) {
-        // Check if user exists in users table
-        const { data: existingUser, error: userCheckError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', data.session.user.id)
-          .single()
-
-        if (!existingUser) {
-          // Create user record if it doesn't exist
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert([
-              {
-                id: data.session.user.id,
-                email: data.session.user.email,
-                role: 'user',  // default role
-                team: 'unassigned',  // default team
-                password_hash: '' // we don't store the actual password hash
-              }
-            ])
-
-          if (insertError) {
-            console.error('Error creating user record:', insertError)
-            toast.error('Error setting up user account')
-            return
-          }
-        }
-
-        // Now load the user data
-        const userData = await loadUserData(data.session.user.id)
-        if (userData) {
-          toast.success('Successfully signed in!')
-          router.refresh()
-          router.push('/')
+      let userData = await loadUserData(data.session.user.id)
+      
+      if (!userData) {
+        await createUserProfile(data.session.user.id, data.session.user.email!)
+        userData = await loadUserData(data.session.user.id)
+        
+        if (!userData) {
+          throw new Error('Failed to create user profile')
         }
       }
+
+      toast.success('Successfully signed in!')
+      router.refresh()
+      router.push('/')
+
     } catch (error) {
-      console.error('Detailed auth error:', error)
-      toast.error(error instanceof Error ? error.message : 'An error occurred')
+      console.error('Authentication error:', error)
+      toast.error(error instanceof Error ? error.message : 'Authentication failed')
     } finally {
       setLoading(false)
     }
@@ -156,9 +155,7 @@ export default function AuthPage() {
         </div>
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <Label htmlFor="email">
-              Email
-            </Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               placeholder="Enter your email"
@@ -169,9 +166,7 @@ export default function AuthPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">
-              Password
-            </Label>
+            <Label htmlFor="password">Password</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -196,11 +191,26 @@ export default function AuthPage() {
             </div>
           </div>
           <Button
-            className="w-full"
+            className="w-full flex items-center justify-center gap-2"
             type="submit"
             disabled={loading}
           >
-            {loading ? "Loading..." : "Sign In"}
+            {loading ? (
+              <>
+                <Lottie
+                  animationData={loadingAnimation}
+                  loop={true}
+                  style={{ width: 24, height: 24 }}
+                  className="transform rotate-0"
+                  rendererSettings={{
+                    preserveAspectRatio: 'xMidYMid slice'
+                  }}
+                />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              "Sign In"
+            )}
           </Button>
         </form>
       </div>

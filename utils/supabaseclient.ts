@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { Database } from '@/types/supabase'
 
 // Debug: Log the entire process.env to see what's available
 console.log('Available environment variables:', {
@@ -19,4 +20,4 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Environment variables not loading from .env.local - check Next.js environment configuration')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey) 
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey) 
