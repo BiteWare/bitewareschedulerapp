@@ -24,6 +24,11 @@ export interface Database {
         Insert: Omit<UserSchedule, 'id' | 'created_at'>;
         Update: Partial<Omit<UserSchedule, 'id' | 'created_at'>>;
       };
+      commitments: {
+        Row: Commitment;
+        Insert: Omit<Commitment, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Commitment, 'id' | 'created_at' | 'updated_at'>>;
+      };
     };
     Views: {
       [_ in never]: never;
@@ -65,4 +70,15 @@ export interface UserSchedule {
   work_hours_end: string | null;
   standing_meetings: string | null;
   created_at: string;
+}
+
+export interface Commitment {
+  id: string;
+  schedule_id: string;
+  type: 'Holidays' | 'Appointments' | 'Meetings';
+  title: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
 } 

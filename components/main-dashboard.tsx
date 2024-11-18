@@ -21,11 +21,12 @@ export default function MainDashboard({ userData }: MainDashboardProps) {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="bg-secondary rounded-lg shadow-lg p-6">
+      <div className="bg-secondary rounded-lg shadow-lg p-6 min-h-[800px]">
         <div className="flex gap-4 mb-6">
           <Button 
             variant={activeTab === 'users' ? "default" : "outline"}
             onClick={() => setActiveTab('users')}
+            className={activeTab === 'users' ? "bg-pink-500 hover:bg-pink-600 text-white" : ""}
           >
             <User className="w-4 h-4 mr-2" />
             Users
@@ -33,6 +34,7 @@ export default function MainDashboard({ userData }: MainDashboardProps) {
           <Button 
             variant={activeTab === 'projects' ? "default" : "outline"}
             onClick={() => setActiveTab('projects')}
+            className={activeTab === 'projects' ? "bg-pink-500 hover:bg-pink-600 text-white" : ""}
           >
             <FolderOpen className="w-4 h-4 mr-2" />
             Projects

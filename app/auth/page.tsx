@@ -191,7 +191,7 @@ export default function AuthPage() {
             </div>
           </div>
           <Button
-            className="w-full flex items-center justify-center gap-2"
+            className="w-1/2 flex items-center justify-center gap-2 mx-auto bg-pink-500 hover:bg-pink-600"
             type="submit"
             disabled={loading}
           >

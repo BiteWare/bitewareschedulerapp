@@ -53,3 +53,69 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- Create Commitments table
+CREATE TABLE commitments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    schedule_id UUID NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
+    type TEXT NOT NULL CHECK (type IN ('Holidays', 'Appointments', 'Meetings')),
+    title TEXT,
+    start_date DATE,
+    end_date DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+);
+
+-- Add RLS policies for Commitments
+ALTER TABLE commitments ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to view their own commitments
+CREATE POLICY "Users can view their own commitments" ON commitments
+    FOR SELECT USING (
+        schedule_id IN (
+            SELECT id FROM schedules 
+            WHERE user_id = auth.uid()
+        )
+    );
+
+-- Allow users to insert their own commitments
+CREATE POLICY "Users can insert their own commitments" ON commitments
+    FOR INSERT WITH CHECK (
+        schedule_id IN (
+            SELECT id FROM schedules 
+            WHERE user_id = auth.uid()
+        )
+    );
+
+-- Allow users to update their own commitments
+CREATE POLICY "Users can update their own commitments" ON commitments
+    FOR UPDATE USING (
+        schedule_id IN (
+            SELECT id FROM schedules 
+            WHERE user_id = auth.uid()
+        )
+    );
+
+-- Allow users to delete their own commitments
+CREATE POLICY "Users can delete their own commitments" ON commitments
+    FOR DELETE USING (
+        schedule_id IN (
+            SELECT id FROM schedules 
+            WHERE user_id = auth.uid()
+        )
+    );
+
+-- Create function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = TIMEZONE('utc', NOW());
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create trigger for updated_at
+CREATE TRIGGER update_commitments_updated_at
+    BEFORE UPDATE ON commitments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
