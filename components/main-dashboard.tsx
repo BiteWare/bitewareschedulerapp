@@ -3,10 +3,8 @@
 import { useState } from "react";
 import { User, FolderOpen } from "lucide-react";
 import UserPrefs from "./user-prefs";
+import ProjectManagement from "./project-management";
 import { Button } from "./ui/button";
-import ProjectTasks from "./project-tasks";
-import ScheduleOptimizer from "./schedule-optimizer";
-import { TeamSchedule } from "./team-schedule";
 import { UserProfile, UserSchedule } from '@/types/supabase'
 
 interface MainDashboardProps {
@@ -45,17 +43,7 @@ export default function MainDashboard({ userData }: MainDashboardProps) {
           {activeTab === 'users' ? (
             <UserPrefs />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <TeamSchedule />
-              </div>
-              <div>
-                <ProjectTasks />
-              </div>
-              <div>
-                <ScheduleOptimizer />
-              </div>
-            </div>
+            <ProjectManagement />
           )}
         </div>
       </div>

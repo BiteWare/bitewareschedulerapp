@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash, X, Check } from 'lucide-react'
+import { Plus, Pencil, Trash, X, Check, Clock } from 'lucide-react'
 import { format } from 'date-fns'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -17,21 +17,31 @@ interface CommitmentsProps {
   scheduleId: string;
 }
 
+interface CommitmentType {
+  type: 'Holidays' | 'Appointments' | 'Meetings';
+  title: string;
+  flexibility: 'Firm' | 'Flexible';
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
+}
+
 export function Commitments({ scheduleId }: CommitmentsProps) {
   const { session } = useSupabase()
   const [commitments, setCommitments] = useState<Commitment[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [newCommitment, setNewCommitment] = useState<{
-    type: 'Holidays' | 'Appointments' | 'Meetings';
-    title: string;
-    start_date: string;
-    end_date: string;
-  }>({
+  const [newCommitment, setNewCommitment] = useState<CommitmentType>({
     type: 'Holidays',
     title: '',
+    flexibility: 'Firm',
     start_date: '',
-    end_date: ''
+    start_time: '',
+    end_date: '',
+    end_time: ''
   })
+  const [showStartTime, setShowStartTime] = useState(false)
+  const [showEndTime, setShowEndTime] = useState(false)
 
   // Load commitments from Supabase
   useEffect(() => {
@@ -64,9 +74,12 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
         .insert([{
           schedule_id: scheduleId,
           type: newCommitment.type,
+          flexibility: newCommitment.flexibility,
           title: newCommitment.title || null,
           start_date: newCommitment.start_date || null,
-          end_date: newCommitment.end_date || null
+          start_time: newCommitment.start_time || null,
+          end_date: newCommitment.end_date || null,
+          end_time: newCommitment.end_time || null
         }])
         .select()
         .single()
@@ -74,7 +87,15 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
       if (error) throw error
 
       setCommitments(prev => [data, ...prev])
-      setNewCommitment({ type: 'Holidays', title: '', start_date: '', end_date: '' })
+      setNewCommitment({ 
+        type: 'Holidays', 
+        title: '', 
+        flexibility: 'Firm',
+        start_date: '', 
+        start_time: '', 
+        end_date: '', 
+        end_time: '' 
+      })
       toast.success('Commitment added successfully')
     } catch (error) {
       console.error('Error adding commitment:', error)
@@ -88,8 +109,11 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
       setNewCommitment({
         type: commitmentToEdit.type,
         title: commitmentToEdit.title || '',
+        flexibility: commitmentToEdit.flexibility || 'Firm',
         start_date: commitmentToEdit.start_date || '',
-        end_date: commitmentToEdit.end_date || ''
+        start_time: commitmentToEdit.start_time || '',
+        end_date: commitmentToEdit.end_date || '',
+        end_time: commitmentToEdit.end_time || ''
       })
       setEditingId(id)
     }
@@ -101,9 +125,12 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
         .from('commitments')
         .update({
           type: newCommitment.type,
+          flexibility: newCommitment.flexibility,
           title: newCommitment.title || null,
           start_date: newCommitment.start_date || null,
-          end_date: newCommitment.end_date || null
+          start_time: newCommitment.start_time || null,
+          end_date: newCommitment.end_date || null,
+          end_time: newCommitment.end_time || null
         })
         .eq('id', id)
 
@@ -115,7 +142,7 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
           : c
       ))
       setEditingId(null)
-      setNewCommitment({ type: 'Holidays', title: '', start_date: '', end_date: '' })
+      setNewCommitment({ type: 'Holidays', title: '', flexibility: 'Firm', start_date: '', start_time: '', end_date: '', end_time: '' })
       toast.success('Commitment updated successfully')
     } catch (error) {
       console.error('Error updating commitment:', error)
@@ -145,16 +172,39 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
     setNewCommitment({
       type: 'Holidays',
       title: '',
+      flexibility: 'Firm',
       start_date: '',
-      end_date: ''
+      start_time: '',
+      end_date: '',
+      end_time: ''
     });
+  }
+
+  // Add this useEffect to handle clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showStartTime || showEndTime) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.time-input-container')) {
+          setShowStartTime(false);
+          setShowEndTime(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showStartTime, showEndTime]);
+
+  const getFlexibilityColor = (flexibility: 'Firm' | 'Flexible') => {
+    return flexibility === 'Firm' ? 'bg-orange-100' : 'bg-blue-100'
   }
 
   return (
     <div className="container mx-auto p-4">
       <div className="mb-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div className="flex flex-col space-y-1.5">
             <Label htmlFor="commitment-type">Type</Label>
             <Select
               value={newCommitment.type}
@@ -165,13 +215,33 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
                 });
               }}
             >
-              <SelectTrigger id="commitment-type">
+              <SelectTrigger id="commitment-type" className="h-10">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Holidays">Holidays</SelectItem>
                 <SelectItem value="Appointments">Appointments</SelectItem>
                 <SelectItem value="Meetings">Meetings</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col space-y-1.5">
+            <Label htmlFor="commitment-flexibility">Flexibility</Label>
+            <Select
+              value={newCommitment.flexibility}
+              onValueChange={(value: 'Firm' | 'Flexible') => {
+                setNewCommitment({ 
+                  ...newCommitment,
+                  flexibility: value,
+                });
+              }}
+            >
+              <SelectTrigger id="commitment-flexibility" className="h-10">
+                <SelectValue placeholder="Select flexibility" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Firm">Firm</SelectItem>
+                <SelectItem value="Flexible">Flexible</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -186,21 +256,67 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
           </div>
           <div>
             <Label htmlFor="commitment-start">Start Date</Label>
-            <Input
-              id="commitment-start"
-              type="date"
-              value={newCommitment.start_date}
-              onChange={(e) => setNewCommitment({ ...newCommitment, start_date: e.target.value })}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="commitment-start"
+                type="date"
+                value={newCommitment.start_date}
+                onChange={(e) => setNewCommitment({ ...newCommitment, start_date: e.target.value })}
+              />
+              <div className="relative time-input-container">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  type="button"
+                  onClick={() => setShowStartTime(!showStartTime)}
+                  className="h-10 w-10"
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+                {showStartTime && (
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-50 bg-background border rounded-md shadow-md">
+                    <Input
+                      type="time"
+                      value={newCommitment.start_time}
+                      onChange={(e) => setNewCommitment({ ...newCommitment, start_time: e.target.value })}
+                      className="w-32"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           <div>
             <Label htmlFor="commitment-stop">End Date</Label>
-            <Input
-              id="commitment-stop"
-              type="date"
-              value={newCommitment.end_date}
-              onChange={(e) => setNewCommitment({ ...newCommitment, end_date: e.target.value })}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="commitment-stop"
+                type="date"
+                value={newCommitment.end_date}
+                onChange={(e) => setNewCommitment({ ...newCommitment, end_date: e.target.value })}
+              />
+              <div className="relative time-input-container">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  type="button"
+                  onClick={() => setShowEndTime(!showEndTime)}
+                  className="h-10 w-10"
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+                {showEndTime && (
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-50 bg-background border rounded-md shadow-md">
+                    <Input
+                      type="time"
+                      value={newCommitment.end_time}
+                      onChange={(e) => setNewCommitment({ ...newCommitment, end_time: e.target.value })}
+                      className="w-32"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           <div className="flex items-end">
             <Button 
@@ -220,6 +336,7 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Type</TableHead>
+            <TableHead>Flexibility</TableHead>
             <TableHead>Title</TableHead>
             <TableHead>Start</TableHead>
             <TableHead>Stop</TableHead>
@@ -229,23 +346,27 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
         <TableBody>
           {commitments.map((commitment) => (
             <TableRow key={commitment.id}>
+              <TableCell>{commitment.type}</TableCell>
               <TableCell>
                 {editingId === commitment.id ? (
                   <Select
-                    value={newCommitment.type}
-                    onValueChange={(value: 'Holidays' | 'Appointments' | 'Meetings') => setNewCommitment({ ...newCommitment, type: value })}
+                    value={newCommitment.flexibility}
+                    onValueChange={(value: 'Firm' | 'Flexible') => 
+                      setNewCommitment({ ...newCommitment, flexibility: value })
+                    }
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Holidays">Holidays</SelectItem>
-                      <SelectItem value="Appointments">Appointments</SelectItem>
-                      <SelectItem value="Meetings">Meetings</SelectItem>
+                      <SelectItem value="Firm">Firm</SelectItem>
+                      <SelectItem value="Flexible">Flexible</SelectItem>
                     </SelectContent>
                   </Select>
                 ) : (
-                  commitment.type
+                  <span className={`px-2 py-1 rounded-md ${getFlexibilityColor(commitment.flexibility)}`}>
+                    {commitment.flexibility}
+                  </span>
                 )}
               </TableCell>
               <TableCell>
@@ -260,24 +381,78 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
               </TableCell>
               <TableCell>
                 {editingId === commitment.id ? (
-                  <Input
-                    type="date"
-                    value={newCommitment.start_date}
-                    onChange={(e) => setNewCommitment({ ...newCommitment, start_date: e.target.value })}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={newCommitment.start_date}
+                      onChange={(e) => setNewCommitment({ ...newCommitment, start_date: e.target.value })}
+                    />
+                    <div className="relative time-input-container">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        type="button"
+                        onClick={() => setShowStartTime(!showStartTime)}
+                        className="h-10 w-10"
+                      >
+                        <Clock className="h-4 w-4" />
+                      </Button>
+                      {showStartTime && (
+                        <div className="absolute right-0 top-[calc(100%+4px)] z-50 bg-background border rounded-md shadow-md">
+                          <Input
+                            type="time"
+                            value={newCommitment.start_time}
+                            onChange={(e) => setNewCommitment({ ...newCommitment, start_time: e.target.value })}
+                            className="w-32"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 ) : (
-                  commitment.start_date ? format(new Date(commitment.start_date), 'yyyy-MM-dd') : '-'
+                  <>
+                    {commitment.start_date ? 
+                      `${format(new Date(commitment.start_date), 'yyyy-MM-dd')}${commitment.start_time ? ' ' + commitment.start_time : ''}` 
+                      : '-'}
+                  </>
                 )}
               </TableCell>
               <TableCell>
                 {editingId === commitment.id ? (
-                  <Input
-                    type="date"
-                    value={newCommitment.end_date}
-                    onChange={(e) => setNewCommitment({ ...newCommitment, end_date: e.target.value })}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={newCommitment.end_date}
+                      onChange={(e) => setNewCommitment({ ...newCommitment, end_date: e.target.value })}
+                    />
+                    <div className="relative time-input-container">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        type="button"
+                        onClick={() => setShowEndTime(!showEndTime)}
+                        className="h-10 w-10"
+                      >
+                        <Clock className="h-4 w-4" />
+                      </Button>
+                      {showEndTime && (
+                        <div className="absolute right-0 top-[calc(100%+4px)] z-50 bg-background border rounded-md shadow-md">
+                          <Input
+                            type="time"
+                            value={newCommitment.end_time}
+                            onChange={(e) => setNewCommitment({ ...newCommitment, end_time: e.target.value })}
+                            className="w-32"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 ) : (
-                  commitment.end_date ? format(new Date(commitment.end_date), 'yyyy-MM-dd') : '-'
+                  <>
+                    {commitment.end_date ? 
+                      `${format(new Date(commitment.end_date), 'yyyy-MM-dd')}${commitment.end_time ? ' ' + commitment.end_time : ''}` 
+                      : '-'}
+                    </>
                 )}
               </TableCell>
               <TableCell>

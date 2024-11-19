@@ -19,15 +19,10 @@ export interface Database {
         Insert: Omit<Project, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Project, 'id' | 'created_at' | 'updated_at'>>;
       };
-      schedules: {
-        Row: UserSchedule;
-        Insert: Omit<UserSchedule, 'id' | 'created_at'>;
-        Update: Partial<Omit<UserSchedule, 'id' | 'created_at'>>;
-      };
-      commitments: {
-        Row: Commitment;
-        Insert: Omit<Commitment, 'id' | 'created_at' | 'updated_at'>;
-        Update: Partial<Omit<Commitment, 'id' | 'created_at' | 'updated_at'>>;
+      tasks: {
+        Row: Task;
+        Insert: Omit<Task, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Task, 'id' | 'created_at' | 'updated_at'>>;
       };
     };
     Views: {
@@ -56,8 +51,8 @@ export interface Project {
   user_id: string;
   name: string;
   description: string | null;
-  start_date: string | null;
-  end_date: string | null;
+  priority: 'Low' | 'Medium' | 'High';
+  hours: number;
   created_at: string;
   updated_at: string;
 }
@@ -76,9 +71,27 @@ export interface Commitment {
   id: string;
   schedule_id: string;
   type: 'Holidays' | 'Appointments' | 'Meetings';
+  flexibility: 'Firm' | 'Flexible';
   title: string | null;
   start_date: string | null;
+  start_time: string | null;
   end_date: string | null;
+  end_time: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Task {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  required_members: string | null;
+  optional_members: string | null;
+  priority: 'Low' | 'Medium' | 'High';
+  hours: number;
   created_at: string;
   updated_at: string;
 } 
