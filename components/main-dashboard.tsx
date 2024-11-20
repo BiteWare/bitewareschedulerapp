@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, FolderOpen } from "lucide-react";
+import { User, FolderOpen, WandSparkles } from "lucide-react";
 import UserPrefs from "./user-prefs";
 import ProjectManagement from "./project-management";
 import { Button } from "./ui/button";
@@ -15,7 +15,7 @@ interface MainDashboardProps {
 }
 
 export default function MainDashboard({ userData }: MainDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'users' | 'projects'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'projects' | 'optimize'>('users');
 
   return (
     <div className="container mx-auto p-6">
@@ -37,13 +37,23 @@ export default function MainDashboard({ userData }: MainDashboardProps) {
             <FolderOpen className="w-4 h-4 mr-2" />
             Projects
           </Button>
+          <Button 
+            variant={activeTab === 'optimize' ? "default" : "outline"}
+            onClick={() => setActiveTab('optimize')}
+            className={activeTab === 'optimize' ? "bg-pink-500 hover:bg-pink-600 text-white" : ""}
+          >
+            <WandSparkles className="w-4 h-4 mr-2" />
+            Optimize Schedule
+          </Button>
         </div>
 
         <div className="bg-background rounded-lg p-4">
           {activeTab === 'users' ? (
             <UserPrefs />
-          ) : (
+          ) : activeTab === 'projects' ? (
             <ProjectManagement />
+          ) : (
+            <div>Optimize Schedule Content Coming Soon</div>
           )}
         </div>
       </div>

@@ -47,12 +47,16 @@ export interface UserProfile {
 }
 
 export interface Project {
-  id: string;
+  id: number;
   user_id: string;
   name: string;
   description: string | null;
   priority: 'Low' | 'Medium' | 'High';
   hours: number;
+  per: 'Week' | 'Month' | 'Day';
+  max_hours: number;
+  start_date: Date | null;
+  end_date: Date | null;
   created_at: string;
   updated_at: string;
 }
@@ -82,16 +86,20 @@ export interface Commitment {
 }
 
 export interface Task {
-  id: string;
+  id: number;
   project_id: string;
   title: string;
   description: string | null;
-  start_date: string | null;
-  end_date: string | null;
+  start_date: Date | null;
+  end_date: Date | null;
   required_members: string | null;
   optional_members: string | null;
   priority: 'Low' | 'Medium' | 'High';
   hours: number;
+  order: number;
+  recurring: 'Weekdays' | 'M, W, F' | null;
+  hour_delay: number;
+  next_task: string | null;
   created_at: string;
   updated_at: string;
 } 

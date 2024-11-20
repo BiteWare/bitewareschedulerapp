@@ -340,7 +340,6 @@ export function Commitments({ scheduleId }: CommitmentsProps) {
             <TableHead>Title</TableHead>
             <TableHead>Start</TableHead>
             <TableHead>Stop</TableHead>
-            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

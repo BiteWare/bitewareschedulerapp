@@ -223,3 +223,20 @@ ADD COLUMN hours INTEGER CHECK (hours >= 1 AND hours <= 40) DEFAULT 1;
 ALTER TABLE projects
 ADD COLUMN priority TEXT CHECK (priority IN ('Low', 'Medium', 'High')) DEFAULT 'Medium',
 ADD COLUMN hours INTEGER CHECK (hours >= 1 AND hours <= 40) DEFAULT 1;
+
+-- Add new columns to Projects table
+ALTER TABLE projects
+ADD COLUMN IF NOT EXISTS priority TEXT CHECK (priority IN ('Low', 'Medium', 'High')) DEFAULT 'Medium',
+ADD COLUMN IF NOT EXISTS hours INTEGER CHECK (hours >= 1 AND hours <= 40) DEFAULT 1,
+ADD COLUMN IF NOT EXISTS per TEXT CHECK (per IN ('Week', 'Month', 'Day')) DEFAULT 'Week',
+ADD COLUMN IF NOT EXISTS max_hours INTEGER CHECK (max_hours >= 1 AND max_hours <= 40) DEFAULT 40;
+
+-- Add new columns to Tasks table
+ALTER TABLE tasks
+ADD COLUMN IF NOT EXISTS priority TEXT CHECK (priority IN ('Low', 'Medium', 'High')) DEFAULT 'Medium',
+ADD COLUMN IF NOT EXISTS hours INTEGER CHECK (hours >= 1 AND hours <= 40) DEFAULT 1,
+ADD COLUMN IF NOT EXISTS "order" INTEGER,
+ADD COLUMN IF NOT EXISTS recurring TEXT[],
+ADD COLUMN IF NOT EXISTS hour_delay INTEGER DEFAULT 8,
+ADD COLUMN IF NOT EXISTS next_task TEXT;
+

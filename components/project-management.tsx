@@ -38,6 +38,15 @@ import {
   CommandInput,
   CommandItem,
 } from "@/components/ui/command"
+import { SelectSingleEventHandler } from "react-day-picker"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
 
 interface Project {
   id: number;
@@ -45,6 +54,10 @@ interface Project {
   description: string;
   priority: 'Low' | 'Medium' | 'High';
   hours: number;
+  per: 'Week' | 'Month' | 'Day';
+  maxHours: number;
+  startDate: Date | null;
+  endDate: Date | null;
 }
 
 interface Task {
@@ -57,11 +70,18 @@ interface Task {
   optionalMembers: string;
   priority: 'Low' | 'Medium' | 'High';
   hours: number;
+  order: number;
+  recurring: string[] | null;
+  hourDelay: number;
 }
 
 interface TeamMember {
   name: string;
   email: string;
+}
+
+interface TaskDetails extends Task {
+  projectName?: string;
 }
 
 const TEAM_MEMBERS: TeamMember[] = [
@@ -108,7 +128,11 @@ export function ProjectManagement() {
     name: "",
     description: "",
     priority: "Medium",
-    hours: 1
+    hours: 1,
+    per: "Week",
+    maxHours: 40,
+    startDate: null,
+    endDate: null
   })
   const [tasks, setTasks] = useState<Task[]>([])
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -120,9 +144,14 @@ export function ProjectManagement() {
     requiredMembers: "",
     optionalMembers: "",
     priority: "Medium",
-    hours: 1
+    hours: 1,
+    order: 1,
+    recurring: null,
+    hourDelay: 8,
   })
   const [selectedProject, setSelectedProject] = useState<string>('')
+  const [selectedTask, setSelectedTask] = useState<TaskDetails | null>(null)
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false)
 
   const handleAddProject = async () => {
     if (newProject.name) {
@@ -144,7 +173,7 @@ export function ProjectManagement() {
           id: projectData.id,
         }
         setProjects([...projects, projectWithId])
-        setNewProject({ name: "", description: "", priority: "Medium", hours: 1 })
+        setNewProject({ name: "", description: "", priority: "Medium", hours: 1, per: "Week", maxHours: 40, startDate: null, endDate: null })
         toast.success('Project added successfully')
       } catch (error) {
         console.error('Error adding project:', error)
@@ -160,7 +189,11 @@ export function ProjectManagement() {
         name: projectToEdit.name,
         description: projectToEdit.description,
         priority: projectToEdit.priority,
-        hours: projectToEdit.hours
+        hours: projectToEdit.hours,
+        per: projectToEdit.per,
+        maxHours: projectToEdit.maxHours,
+        startDate: projectToEdit.startDate,
+        endDate: projectToEdit.endDate
       })
       setEditingProjectId(id)
     }
@@ -173,7 +206,7 @@ export function ProjectManagement() {
         : project
     ))
     setEditingProjectId(null)
-    setNewProject({ name: "", description: "", priority: "Medium", hours: 1 })
+    setNewProject({ name: "", description: "", priority: "Medium", hours: 1, per: "Week", maxHours: 40, startDate: null, endDate: null })
   }
 
   const handleDeleteProject = async (id: number) => {
@@ -227,7 +260,10 @@ export function ProjectManagement() {
           requiredMembers: "",
           optionalMembers: "",
           priority: "Medium",
-          hours: 1
+          hours: 1,
+          order: 1,
+          recurring: null,
+          hourDelay: 8,
         })
         toast.success('Task added successfully')
       } catch (error) {
@@ -250,7 +286,10 @@ export function ProjectManagement() {
         requiredMembers: taskToEdit.requiredMembers,
         optionalMembers: taskToEdit.optionalMembers,
         priority: taskToEdit.priority,
-        hours: taskToEdit.hours
+        hours: taskToEdit.hours,
+        order: taskToEdit.order,
+        recurring: taskToEdit.recurring,
+        hourDelay: taskToEdit.hourDelay,
       })
       setEditingId(id)
     }
@@ -271,7 +310,10 @@ export function ProjectManagement() {
       requiredMembers: "",
       optionalMembers: "",
       priority: "Medium",
-      hours: 1
+      hours: 1,
+      order: 1,
+      recurring: null,
+      hourDelay: 8,
     })
   }
 
@@ -302,8 +344,21 @@ export function ProjectManagement() {
       requiredMembers: "",
       optionalMembers: "",
       priority: "Medium",
-      hours: 1
+      hours: 1,
+      order: 1,
+      recurring: null,
+      hourDelay: 8,
     })
+  }
+
+  const handleTaskClick = (e: React.MouseEvent, task: Task) => {
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    
+    const projectName = projects.find(p => p.id.toString() === selectedProject)?.name
+    setSelectedTask({ ...task, projectName })
+    setIsTaskDialogOpen(true)
   }
 
   useEffect(() => {
@@ -375,18 +430,97 @@ export function ProjectManagement() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Label>Hours</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={40}
+                  value={newProject.hours}
+                  onChange={(e) => {
+                    const hours = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 40)
+                    setNewProject({...newProject, hours})
+                  }}
+                />
+              </div>
+              <div className="flex-1">
+                <Label>Per</Label>
+                <Select
+                  value={newProject.per}
+                  onValueChange={(value) => setNewProject({...newProject, per: value as 'Week' | 'Month' | 'Day'})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Week">Week</SelectItem>
+                    <SelectItem value="Month">Month</SelectItem>
+                    <SelectItem value="Day">Day</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
-              <Label>Hours Needed</Label>
+              <Label>Max Hours</Label>
               <Input
                 type="number"
                 min={1}
                 max={40}
-                value={newProject.hours}
+                value={newProject.maxHours}
                 onChange={(e) => {
-                  const hours = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 40)
-                  setNewProject({...newProject, hours})
+                  const maxHours = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 40)
+                  setNewProject({...newProject, maxHours})
                 }}
               />
+            </div>
+            <div>
+              <Label>Start Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal ${
+                      !newProject.startDate && "text-muted-foreground"
+                    }`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {newProject.startDate ? format(newProject.startDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={newProject.startDate || undefined}
+                    onSelect={(date: Date | undefined) => setNewProject({...newProject, startDate: date || null})}
+                    className="rounded-md border"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label>End Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal ${
+                      !newProject.endDate && "text-muted-foreground"
+                    }`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {newProject.endDate ? format(newProject.endDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={newProject.endDate || undefined}
+                    onSelect={(date: Date | undefined) => setNewProject({...newProject, endDate: date || null})}
+                    className="rounded-md border"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
@@ -401,37 +535,25 @@ export function ProjectManagement() {
                 <TableHead>Description</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Hours</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>Per</TableHead>
+                <TableHead>Max Hours</TableHead>
+                <TableHead>Start Date</TableHead>
+                <TableHead>End Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {projects.map((project) => (
                 <TableRow key={project.id}>
+                  <TableCell>{editingProjectId === project.id ? (
+                    <Input value={newProject.name} onChange={(e) => setNewProject({...newProject, name: e.target.value})} />
+                  ) : project.name}</TableCell>
+                  <TableCell>{editingProjectId === project.id ? (
+                    <Input value={newProject.description} onChange={(e) => setNewProject({...newProject, description: e.target.value})} />
+                  ) : project.description}</TableCell>
                   <TableCell>
                     {editingProjectId === project.id ? (
-                      <Input
-                        value={newProject.name}
-                        onChange={(e) => setNewProject({...newProject, name: e.target.value})}
-                      />
-                    ) : project.name}
-                  </TableCell>
-                  <TableCell>
-                    {editingProjectId === project.id ? (
-                      <Input
-                        value={newProject.description}
-                        onChange={(e) => setNewProject({...newProject, description: e.target.value})}
-                      />
-                    ) : project.description}
-                  </TableCell>
-                  <TableCell>
-                    {editingProjectId === project.id ? (
-                      <Select
-                        value={newProject.priority}
-                        onValueChange={(value) => setNewProject({...newProject, priority: value as 'Low' | 'Medium' | 'High'})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                      <Select value={newProject.priority} onValueChange={(value) => setNewProject({...newProject, priority: value as 'Low' | 'Medium' | 'High'})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Low">Low</SelectItem>
                           <SelectItem value="Medium">Medium</SelectItem>
@@ -439,63 +561,58 @@ export function ProjectManagement() {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span className={`px-2 py-1 rounded-md ${getPriorityColor(project.priority)}`}>
-                        {project.priority}
-                      </span>
+                      <span className={`px-2 py-1 rounded-md ${getPriorityColor(project.priority)}`}>{project.priority}</span>
                     )}
                   </TableCell>
                   <TableCell>
                     {editingProjectId === project.id ? (
-                      <Input
-                        type="number"
-                        min={1}
-                        max={40}
-                        value={newProject.hours}
+                      <Input type="number" min={1} max={40} value={newProject.hours}
                         onChange={(e) => {
                           const hours = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 40)
                           setNewProject({...newProject, hours})
                         }}
                       />
                     ) : (
-                      <span className={`px-2 py-1 rounded-md ${getHoursColor(project.hours)}`}>
-                        {project.hours} hrs
-                      </span>
+                      <span className={`px-2 py-1 rounded-md ${getHoursColor(project.hours)}`}>{project.hours} hrs</span>
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex space-x-2">
+                    {editingProjectId === project.id ? (
+                      <Select value={newProject.per} onValueChange={(value) => setNewProject({...newProject, per: value as 'Week' | 'Month' | 'Day'})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Week">Week</SelectItem>
+                          <SelectItem value="Month">Month</SelectItem>
+                          <SelectItem value="Day">Day</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : project.per}
+                  </TableCell>
+                  <TableCell>
+                    {editingProjectId === project.id ? (
+                      <Input type="number" min={1} max={40} value={newProject.maxHours}
+                        onChange={(e) => {
+                          const maxHours = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 40)
+                          setNewProject({...newProject, maxHours})
+                        }}
+                      />
+                    ) : (
+                      <span className={`px-2 py-1 rounded-md ${getHoursColor(project.maxHours)}`}>{project.maxHours} hrs</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{project.startDate ? format(project.startDate, "PPP") : "Not set"}</TableCell>
+                  <TableCell className="flex items-center justify-between">
+                    <span>{project.endDate ? format(project.endDate, "PPP") : "Not set"}</span>
+                    <div className="flex items-center gap-2 ml-4">
                       {editingProjectId === project.id ? (
                         <>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleSaveProjectEdit(project.id)}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => setEditingProjectId(null)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          <Button size="sm" onClick={() => handleSaveProjectEdit(project.id)}><Check className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="outline" onClick={() => setEditingProjectId(null)}><X className="h-4 w-4" /></Button>
                         </>
                       ) : (
                         <>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleEditProject(project.id)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => handleDeleteProject(project.id)}
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleEditProject(project.id)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDeleteProject(project.id)}><Trash className="h-4 w-4" /></Button>
                         </>
                       )}
                     </div>
@@ -539,7 +656,16 @@ export function ProjectManagement() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label>Order</Label>
+              <Input
+                type="number"
+                min={1}
+                value={newTask.order}
+                onChange={(e) => setNewTask({...newTask, order: parseInt(e.target.value) || 1})}
+              />
+            </div>
             <div>
               <Label htmlFor="task-title">Title</Label>
               <Input
@@ -550,52 +676,44 @@ export function ProjectManagement() {
               />
             </div>
             <div>
-              <Label>Start Date</Label>
+              <Label>Recurring Days</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={`w-full justify-start text-left font-normal ${
-                      !newTask.startDate && "text-muted-foreground"
+                      !newTask.recurring?.length && "text-muted-foreground"
                     }`}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {newTask.startDate ? format(newTask.startDate, "PPP") : "Pick a date"}
+                    {newTask.recurring?.length 
+                      ? `${newTask.recurring.length} days selected` 
+                      : "Select days"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
-                    mode="single"
-                    selected={newTask.startDate || undefined}
-                    onSelect={(date) => setNewTask({...newTask, startDate: date || null})}
+                    mode="multiple"
+                    selected={newTask.recurring?.map(day => new Date(day)) || []}
+                    onSelect={(dates: Date[] | undefined) => 
+                      setNewTask({
+                        ...newTask, 
+                        recurring: dates?.map(date => date.toISOString().split('T')[0]) || null
+                      })
+                    }
                     className="rounded-md border"
                   />
                 </PopoverContent>
               </Popover>
             </div>
             <div>
-              <Label>End Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      !newTask.endDate && "text-muted-foreground"
-                    }`}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {newTask.endDate ? format(newTask.endDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={newTask.endDate || undefined}
-                    onSelect={(date) => setNewTask({...newTask, endDate: date || null})}
-                    className="rounded-md border"
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label>Hour Delay till Next Task</Label>
+              <Input
+                type="number"
+                min={0}
+                value={newTask.hourDelay}
+                onChange={(e) => setNewTask({...newTask, hourDelay: parseInt(e.target.value) || 0})}
+              />
             </div>
           </div>
 
@@ -738,19 +856,26 @@ export function ProjectManagement() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Order</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Hours</TableHead>
+                <TableHead>Hour Delay</TableHead>
                 <TableHead>Start Date</TableHead>
                 <TableHead>End Date</TableHead>
+                <TableHead>Recurring</TableHead>
                 <TableHead>Required Members</TableHead>
                 <TableHead>Optional Members</TableHead>
-                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tasks.map((task) => (
-                <TableRow key={task.id}>
+                <TableRow 
+                  key={task.id} 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={(e) => handleTaskClick(e, task)}
+                >
+                  <TableCell>{task.order}</TableCell>
                   <TableCell>
                     {editingId === task.id ? (
                       <Input
@@ -769,48 +894,27 @@ export function ProjectManagement() {
                       {task.hours} hrs
                     </span>
                   </TableCell>
+                  <TableCell>{task.hourDelay}</TableCell>
                   <TableCell>
                     {task.startDate ? format(task.startDate, "PPP") : "Not set"}
                   </TableCell>
                   <TableCell>
                     {task.endDate ? format(task.endDate, "PPP") : "Not set"}
                   </TableCell>
+                  <TableCell>{task.recurring || "None"}</TableCell>
                   <TableCell>{task.requiredMembers}</TableCell>
                   <TableCell>{task.optionalMembers}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
+                  <TableCell className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       {editingId === task.id ? (
                         <>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleSaveEdit(task.id)}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={handleCancelEdit}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          <Button size="sm" onClick={() => handleSaveEdit(task.id)}><Check className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="outline" onClick={handleCancelEdit}><X className="h-4 w-4" /></Button>
                         </>
                       ) : (
                         <>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleEditTask(task.id)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => handleDeleteTask(task.id)}
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleEditTask(task.id)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDeleteTask(task.id)}><Trash className="h-4 w-4" /></Button>
                         </>
                       )}
                     </div>
@@ -821,6 +925,67 @@ export function ProjectManagement() {
           </Table>
         </div>
       </div>
+      <AlertDialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
+        <AlertDialogContent className="max-w-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex justify-between items-center">
+              <span>{selectedTask?.title}</span>
+              <span className={`px-2 py-1 rounded-md text-sm ${selectedTask?.priority ? getPriorityColor(selectedTask.priority) : ''}`}>
+                {selectedTask?.priority}
+              </span>
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <div className="space-y-4">
+            {selectedTask?.projectName && (
+              <div>
+                <span className="font-semibold">Project: </span>
+                {selectedTask.projectName}
+              </div>
+            )}
+            <div>
+              <span className="font-semibold">Description: </span>
+              {selectedTask?.description || 'No description'}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="font-semibold">Hours: </span>
+                <span className={`px-2 py-1 rounded-md ${selectedTask?.hours ? getHoursColor(selectedTask.hours) : ''}`}>
+                  {selectedTask?.hours} hrs
+                </span>
+              </div>
+              <div>
+                <span className="font-semibold">Hour Delay: </span>
+                {selectedTask?.hourDelay} hrs
+              </div>
+              <div>
+                <span className="font-semibold">Start Date: </span>
+                {selectedTask?.startDate ? format(selectedTask.startDate, "PPP") : "Not set"}
+              </div>
+              <div>
+                <span className="font-semibold">End Date: </span>
+                {selectedTask?.endDate ? format(selectedTask.endDate, "PPP") : "Not set"}
+              </div>
+            </div>
+            <div>
+              <span className="font-semibold">Required Members: </span>
+              {selectedTask?.requiredMembers || 'None'}
+            </div>
+            <div>
+              <span className="font-semibold">Optional Members: </span>
+              {selectedTask?.optionalMembers || 'None'}
+            </div>
+            <div>
+              <span className="font-semibold">Recurring: </span>
+              {selectedTask?.recurring ? selectedTask.recurring.join(', ') : 'None'}
+            </div>
+            <div>
+              <span className="font-semibold">Order: </span>
+              {selectedTask?.order}
+            </div>
+          </div>
+          <AlertDialogCancel>Close</AlertDialogCancel>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
