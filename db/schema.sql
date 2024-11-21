@@ -214,26 +214,23 @@ CREATE TRIGGER update_tasks_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Modify the Tasks table to add priority and hours
-ALTER TABLE tasks
-ADD COLUMN priority TEXT CHECK (priority IN ('Low', 'Medium', 'High')) DEFAULT 'Medium',
-ADD COLUMN hours INTEGER CHECK (hours >= 1 AND hours <= 40) DEFAULT 1;
+-- Modify the Projects table: replace priority with order
+ALTER TABLE projects 
+DROP COLUMN priority,
+ADD COLUMN "order" INTEGER CHECK ("order" BETWEEN 1 AND 10) DEFAULT 1;
 
--- Add Priority and Hours to Projects table
-ALTER TABLE projects
-ADD COLUMN priority TEXT CHECK (priority IN ('Low', 'Medium', 'High')) DEFAULT 'Medium',
-ADD COLUMN hours INTEGER CHECK (hours >= 1 AND hours <= 40) DEFAULT 1;
+-- Modify the Tasks table: drop priority column (keep existing order column)
+ALTER TABLE tasks 
+DROP COLUMN priority;
 
 -- Add new columns to Projects table
 ALTER TABLE projects
-ADD COLUMN IF NOT EXISTS priority TEXT CHECK (priority IN ('Low', 'Medium', 'High')) DEFAULT 'Medium',
 ADD COLUMN IF NOT EXISTS hours INTEGER CHECK (hours >= 1 AND hours <= 40) DEFAULT 1,
 ADD COLUMN IF NOT EXISTS per TEXT CHECK (per IN ('Week', 'Month', 'Day')) DEFAULT 'Week',
 ADD COLUMN IF NOT EXISTS max_hours INTEGER CHECK (max_hours >= 1 AND max_hours <= 40) DEFAULT 40;
 
 -- Add new columns to Tasks table
 ALTER TABLE tasks
-ADD COLUMN IF NOT EXISTS priority TEXT CHECK (priority IN ('Low', 'Medium', 'High')) DEFAULT 'Medium',
 ADD COLUMN IF NOT EXISTS hours INTEGER CHECK (hours >= 1 AND hours <= 40) DEFAULT 1,
 ADD COLUMN IF NOT EXISTS "order" INTEGER,
 ADD COLUMN IF NOT EXISTS recurring TEXT[],

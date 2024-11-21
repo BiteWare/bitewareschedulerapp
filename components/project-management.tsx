@@ -52,7 +52,7 @@ interface Project {
   id: number;
   name: string;
   description: string;
-  priority: 'Low' | 'Medium' | 'High';
+  order: number;
   hours: number;
   per: 'Week' | 'Month' | 'Day';
   maxHours: number;
@@ -68,7 +68,6 @@ interface Task {
   description: string;
   requiredMembers: string;
   optionalMembers: string;
-  priority: 'Low' | 'Medium' | 'High';
   hours: number;
   order: number;
   recurring: string[] | null;
@@ -97,19 +96,6 @@ const TEAM_MEMBERS: TeamMember[] = [
   { name: "Tim Hirsch", email: "tim@biteware.dev" },
 ]
 
-const getPriorityColor = (priority: 'Low' | 'Medium' | 'High') => {
-  switch (priority) {
-    case 'Low':
-      return 'bg-green-100'
-    case 'Medium':
-      return 'bg-yellow-100'
-    case 'High':
-      return 'bg-red-100'
-    default:
-      return ''
-  }
-}
-
 const getHoursColor = (hours: number) => {
   if (hours <= 8) {
     return 'bg-blue-100'
@@ -127,7 +113,7 @@ export function ProjectManagement() {
   const [newProject, setNewProject] = useState<Omit<Project, 'id'>>({
     name: "",
     description: "",
-    priority: "Medium",
+    order: 1,
     hours: 1,
     per: "Week",
     maxHours: 40,
@@ -143,7 +129,6 @@ export function ProjectManagement() {
     description: "",
     requiredMembers: "",
     optionalMembers: "",
-    priority: "Medium",
     hours: 1,
     order: 1,
     recurring: null,
@@ -173,7 +158,7 @@ export function ProjectManagement() {
           id: projectData.id,
         }
         setProjects([...projects, projectWithId])
-        setNewProject({ name: "", description: "", priority: "Medium", hours: 1, per: "Week", maxHours: 40, startDate: null, endDate: null })
+        setNewProject({ name: "", description: "", order: 1, hours: 1, per: "Week", maxHours: 40, startDate: null, endDate: null })
         toast.success('Project added successfully')
       } catch (error) {
         console.error('Error adding project:', error)
@@ -188,7 +173,7 @@ export function ProjectManagement() {
       setNewProject({
         name: projectToEdit.name,
         description: projectToEdit.description,
-        priority: projectToEdit.priority,
+        order: projectToEdit.order,
         hours: projectToEdit.hours,
         per: projectToEdit.per,
         maxHours: projectToEdit.maxHours,
@@ -206,7 +191,7 @@ export function ProjectManagement() {
         : project
     ))
     setEditingProjectId(null)
-    setNewProject({ name: "", description: "", priority: "Medium", hours: 1, per: "Week", maxHours: 40, startDate: null, endDate: null })
+    setNewProject({ name: "", description: "", order: 1, hours: 1, per: "Week", maxHours: 40, startDate: null, endDate: null })
   }
 
   const handleDeleteProject = async (id: number) => {
@@ -238,7 +223,6 @@ export function ProjectManagement() {
             end_date: newTask.endDate?.toISOString(),
             required_members: newTask.requiredMembers,
             optional_members: newTask.optionalMembers,
-            priority: newTask.priority,
             hours: newTask.hours,
             project_id: selectedProject
           })
@@ -259,7 +243,6 @@ export function ProjectManagement() {
           description: "",
           requiredMembers: "",
           optionalMembers: "",
-          priority: "Medium",
           hours: 1,
           order: 1,
           recurring: null,
@@ -285,7 +268,6 @@ export function ProjectManagement() {
         description: taskToEdit.description,
         requiredMembers: taskToEdit.requiredMembers,
         optionalMembers: taskToEdit.optionalMembers,
-        priority: taskToEdit.priority,
         hours: taskToEdit.hours,
         order: taskToEdit.order,
         recurring: taskToEdit.recurring,
@@ -309,7 +291,6 @@ export function ProjectManagement() {
       description: "",
       requiredMembers: "",
       optionalMembers: "",
-      priority: "Medium",
       hours: 1,
       order: 1,
       recurring: null,
@@ -343,7 +324,6 @@ export function ProjectManagement() {
       description: "",
       requiredMembers: "",
       optionalMembers: "",
-      priority: "Medium",
       hours: 1,
       order: 1,
       recurring: null,
@@ -415,18 +395,20 @@ export function ProjectManagement() {
               />
             </div>
             <div>
-              <Label>Priority</Label>
+              <Label>Order</Label>
               <Select
-                value={newProject.priority}
-                onValueChange={(value) => setNewProject({...newProject, priority: value as 'Low' | 'Medium' | 'High'})}
+                value={newProject.order.toString()}
+                onValueChange={(value) => setNewProject({...newProject, order: parseInt(value)})}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
+                  <SelectValue placeholder="Select order" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
+                  {[...Array(10)].map((_, i) => (
+                    <SelectItem key={i + 1} value={(i + 1).toString()}>
+                      {i + 1}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -533,7 +515,7 @@ export function ProjectManagement() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead>Priority</TableHead>
+                <TableHead>Order</TableHead>
                 <TableHead>Hours</TableHead>
                 <TableHead>Per</TableHead>
                 <TableHead>Max Hours</TableHead>
@@ -552,17 +534,20 @@ export function ProjectManagement() {
                   ) : project.description}</TableCell>
                   <TableCell>
                     {editingProjectId === project.id ? (
-                      <Select value={newProject.priority} onValueChange={(value) => setNewProject({...newProject, priority: value as 'Low' | 'Medium' | 'High'})}>
+                      <Select
+                        value={newProject.order.toString()}
+                        onValueChange={(value) => setNewProject({...newProject, order: parseInt(value)})}
+                      >
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Low">Low</SelectItem>
-                          <SelectItem value="Medium">Medium</SelectItem>
-                          <SelectItem value="High">High</SelectItem>
+                          {[...Array(10)].map((_, i) => (
+                            <SelectItem key={i + 1} value={(i + 1).toString()}>
+                              {i + 1}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                    ) : (
-                      <span className={`px-2 py-1 rounded-md ${getPriorityColor(project.priority)}`}>{project.priority}</span>
-                    )}
+                    ) : project.order}
                   </TableCell>
                   <TableCell>
                     {editingProjectId === project.id ? (
@@ -643,9 +628,6 @@ export function ProjectManagement() {
                   <SelectItem key={project.id} value={project.id.toString()}>
                     <span className="flex items-center gap-2">
                       {project.name}
-                      <span className={`px-2 py-1 rounded-md text-sm ${getPriorityColor(project.priority)}`}>
-                        {project.priority}
-                      </span>
                       <span className={`px-2 py-1 rounded-md text-sm ${getHoursColor(project.hours)}`}>
                         {project.hours} hrs
                       </span>
@@ -659,12 +641,21 @@ export function ProjectManagement() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label>Order</Label>
-              <Input
-                type="number"
-                min={1}
-                value={newTask.order}
-                onChange={(e) => setNewTask({...newTask, order: parseInt(e.target.value) || 1})}
-              />
+              <Select
+                value={newTask.order.toString()}
+                onValueChange={(value) => setNewTask({...newTask, order: parseInt(value)})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select order" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...Array(10)].map((_, i) => (
+                    <SelectItem key={i + 1} value={(i + 1).toString()}>
+                      {i + 1}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="task-title">Title</Label>
@@ -727,22 +718,6 @@ export function ProjectManagement() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Priority</Label>
-              <Select
-                value={newTask.priority}
-                onValueChange={(value) => setNewTask({...newTask, priority: value as 'Low' | 'Medium' | 'High'})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div>
               <Label>Hours Needed</Label>
               <Input
@@ -858,7 +833,6 @@ export function ProjectManagement() {
               <TableRow>
                 <TableHead>Order</TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead>Priority</TableHead>
                 <TableHead>Hours</TableHead>
                 <TableHead>Hour Delay</TableHead>
                 <TableHead>Start Date</TableHead>
@@ -883,11 +857,6 @@ export function ProjectManagement() {
                         onChange={(e) => setNewTask({...newTask, title: e.target.value})}
                       />
                     ) : task.title}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-md ${getPriorityColor(task.priority)}`}>
-                      {task.priority}
-                    </span>
                   </TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded-md ${getHoursColor(task.hours)}`}>
@@ -930,9 +899,7 @@ export function ProjectManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex justify-between items-center">
               <span>{selectedTask?.title}</span>
-              <span className={`px-2 py-1 rounded-md text-sm ${selectedTask?.priority ? getPriorityColor(selectedTask.priority) : ''}`}>
-                {selectedTask?.priority}
-              </span>
+              <span>Order: {selectedTask?.order}</span>
             </AlertDialogTitle>
           </AlertDialogHeader>
           <div className="space-y-4">
@@ -977,10 +944,6 @@ export function ProjectManagement() {
             <div>
               <span className="font-semibold">Recurring: </span>
               {selectedTask?.recurring ? selectedTask.recurring.join(', ') : 'None'}
-            </div>
-            <div>
-              <span className="font-semibold">Order: </span>
-              {selectedTask?.order}
             </div>
           </div>
           <AlertDialogCancel>Close</AlertDialogCancel>

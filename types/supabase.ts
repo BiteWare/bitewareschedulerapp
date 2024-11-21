@@ -51,7 +51,7 @@ export interface Project {
   user_id: string;
   name: string;
   description: string | null;
-  priority: 'Low' | 'Medium' | 'High';
+  order: number;
   hours: number;
   per: 'Week' | 'Month' | 'Day';
   max_hours: number;
@@ -94,7 +94,6 @@ export interface Task {
   end_date: Date | null;
   required_members: string | null;
   optional_members: string | null;
-  priority: 'Low' | 'Medium' | 'High';
   hours: number;
   order: number;
   recurring: 'Weekdays' | 'M, W, F' | null;

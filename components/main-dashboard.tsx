@@ -4,6 +4,7 @@ import { useState } from "react";
 import { User, FolderOpen, WandSparkles } from "lucide-react";
 import UserPrefs from "./user-prefs";
 import ProjectManagement from "./project-management";
+import ScheduleAssist from "./schedule-assist";
 import { Button } from "./ui/button";
 import { UserProfile, UserSchedule } from '@/types/supabase'
 
@@ -53,7 +54,7 @@ export default function MainDashboard({ userData }: MainDashboardProps) {
           ) : activeTab === 'projects' ? (
             <ProjectManagement />
           ) : (
-            <div>Optimize Schedule Content Coming Soon</div>
+            <ScheduleAssist userData={userData} />
           )}
         </div>
       </div>
