@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Send } from 'lucide-react'
+import { Send, ChevronDown, RefreshCcw, Bot } from 'lucide-react'
 import { UserProfile, UserSchedule, Project, Task } from '@/types/supabase'
 import { supabase } from '@/utils/supabaseclient'
 import {
@@ -17,7 +17,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown } from 'lucide-react'
+import Lottie from 'lottie-react';
+import assistantLoader from '@/app/assets/annimations/assistantloader.json';
 
 interface ScheduleAssistProps {
   userData: {
@@ -26,13 +27,18 @@ interface ScheduleAssistProps {
   } | null;
 }
 
+interface Message {
+  text: string;
+  sender: 'user' | 'assistant';
+  role?: 'user' | 'assistant' | 'system';
+}
+
 export default function ScheduleAssist({ userData }: ScheduleAssistProps) {
-  const [messages, setMessages] = useState<{ text: string; sender: 'user' | 'assistant' }[]>([
-    { text: "Hello! How can I assist you with scheduling today?", sender: 'assistant' },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [projects, setProjects] = useState<Project[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   // Load projects and tasks
   useEffect(() => {
@@ -70,16 +76,52 @@ export default function ScheduleAssist({ userData }: ScheduleAssistProps) {
     loadUserData();
   }, [userData?.profile?.id]);
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim()) {
-      setMessages([...messages, { text: inputMessage, sender: 'user' }])
+  const handleSendMessage = async () => {
+    if (inputMessage.trim() && !isLoading) {
+      const userMessage: Message = { 
+        text: inputMessage, 
+        sender: 'user', 
+        role: 'user' 
+      }
+      setMessages(prev => [...prev, userMessage])
       setInputMessage('')
-      setTimeout(() => {
-        setMessages(prev => [...prev, { 
-          text: "I've received your message. How else can I help you with scheduling?", 
-          sender: 'assistant' 
+      setIsLoading(true)
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: messages.concat([userMessage]).map(msg => ({
+              role: msg.role || msg.sender,
+              content: msg.text
+            }))
+          }),
+        })
+
+        const data = await response.json()
+        
+        if (data.error) {
+          throw new Error(data.error)
+        }
+
+        setMessages(prev => [...prev, {
+          text: data.response.content,
+          sender: 'assistant',
+          role: 'assistant'
         }])
-      }, 1000)
+      } catch (error) {
+        console.error('Error:', error)
+        setMessages(prev => [...prev, {
+          text: "I apologize, but I'm having trouble responding right now. Please try again later.",
+          sender: 'assistant',
+          role: 'assistant'
+        }])
+      } finally {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -89,6 +131,11 @@ export default function ScheduleAssist({ userData }: ScheduleAssistProps) {
     if (hours <= 8) return 'bg-green-100 text-green-800'
     if (hours <= 20) return 'bg-yellow-100 text-yellow-800'
     return 'bg-pink-100 text-pink-800'
+  }
+
+  const resetChat = () => {
+    setMessages([])
+    setInputMessage('')
   }
 
   return (
@@ -214,12 +261,36 @@ export default function ScheduleAssist({ userData }: ScheduleAssistProps) {
         </Card>
         
         <Card>
-          <CardHeader>
-            <CardTitle>Scheduling Assistant</CardTitle>
+          <CardHeader className="flex flex-col items-center relative pb-2">
+            <div className="text-center flex items-center gap-2">
+              <Bot className="h-6 w-6 text-pink-600" />
+              <CardTitle>Sync</CardTitle>
+            </div>
             <CardDescription>Chat with our AI to manage your schedule</CardDescription>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={resetChat}
+              className="h-8 w-8 hover:bg-pink-100 hover:text-pink-800 text-pink-600 absolute right-6 top-6"
+              title="Start Over"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              <span className="sr-only">Start Over</span>
+            </Button>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[300px] md:h-[400px] w-full pr-4">
+            <ScrollArea className="h-[300px] md:h-[400px] w-full pr-4 relative">
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                  <div className="w-24 h-24">
+                    <Lottie
+                      animationData={assistantLoader}
+                      loop={true}
+                      autoplay={true}
+                    />
+                  </div>
+                </div>
+              )}
               {messages.map((message, index) => (
                 <div key={index} className={`mb-4 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}>
                   <div className={`inline-block p-2 rounded-lg ${message.sender === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
@@ -236,9 +307,18 @@ export default function ScheduleAssist({ userData }: ScheduleAssistProps) {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 className="flex-grow"
+                disabled={isLoading}
               />
-              <Button onClick={handleSendMessage} className="ml-2">
-                <Send className="h-4 w-4" />
+              <Button 
+                onClick={handleSendMessage} 
+                className="ml-2"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
                 <span className="sr-only">Send message</span>
               </Button>
             </div>
